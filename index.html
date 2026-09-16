@@ -39,7 +39,7 @@
         </div>
     </header>
 
-    <!-- Contenedor Principal (100% de Ancho) -->
+    <!-- Contenedor Principal -->
     <main class="p-6 w-full space-y-6">
 
         <!-- Banner de Alerta Crítica (>= 2 Errores) -->
@@ -122,27 +122,7 @@
     </main>
 
     <script>
-        // Reemplaza por la URL pública real de tu Azure Function App
         const API_URL = "/api/GetETLMonitoring";
-
-        const datosMock = [
-            { identificadorETL: "CP_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 01:30:03", ultimaDuracionSeg: 6, totalCorridas24h: 2, exitosas: 2, errores: 0, sinDatos: 0, tiempoPromedioSeg: 6 },
-            { identificadorETL: "CP_ETL_OPERATIVA", ultimoEstado: "EN_PROCESO", ultimaEjecucion: "2026-09-16 09:48:00", ultimaDuracionSeg: null, totalCorridas24h: 47, exitosas: 40, errores: 0, sinDatos: 0, tiempoPromedioSeg: 707 },
-            { identificadorETL: "FAENAS_ETL", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-15 18:47:22", ultimaDuracionSeg: 344, totalCorridas24h: 10, exitosas: 3, errores: 0, sinDatos: 0, tiempoPromedioSeg: 343 },
-            { identificadorETL: "FAENAS_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:00:37", ultimaDuracionSeg: 508, totalCorridas24h: 48, exitosas: 16, errores: 0, sinDatos: 0, tiempoPromedioSeg: 375 },
-            { identificadorETL: "FAENAS_ETL_OPERATIVA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:50:36", ultimaDuracionSeg: 10, totalCorridas24h: 288, exitosas: 215, errores: 0, sinDatos: 0, tiempoPromedioSeg: 11 },
-            { identificadorETL: "IMARPE", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:41:05", ultimaDuracionSeg: 161, totalCorridas24h: 48, exitosas: 45, errores: 0, sinDatos: 0, tiempoPromedioSeg: 148 },
-            { identificadorETL: "MEGATRACK", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:55:58", ultimaDuracionSeg: 0, totalCorridas24h: 68, exitosas: 68, errores: 0, sinDatos: 0, tiempoPromedioSeg: 1 },
-            { identificadorETL: "PERUCONTROL", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:54:38", ultimaDuracionSeg: 2, totalCorridas24h: 286, exitosas: 286, errores: 0, sinDatos: 0, tiempoPromedioSeg: 2 },
-            { identificadorETL: "PESCA6", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 08:56:48", ultimaDuracionSeg: 223, totalCorridas24h: 34, exitosas: 32, errores: 1, sinDatos: 0, tiempoPromedioSeg: 126 },
-            { identificadorETL: "PRODUCE", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:27:44", ultimaDuracionSeg: 4, totalCorridas24h: 69, exitosas: 69, errores: 0, sinDatos: 0, tiempoPromedioSeg: 4 },
-            { identificadorETL: "SGP", ultimoEstado: "ERROR", ultimaEjecucion: "2026-09-16 09:13:01", ultimaDuracionSeg: 131, totalCorridas24h: 39, exitosas: 0, errores: 38, sinDatos: 0, tiempoPromedioSeg: 132 },
-            { identificadorETL: "SIGA_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 02:00:03", ultimaDuracionSeg: 132, totalCorridas24h: 2, exitosas: 2, errores: 0, sinDatos: 0, tiempoPromedioSeg: 130 },
-            { identificadorETL: "SIGA_ETL_OPERATIVA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:03:15", ultimaDuracionSeg: 273, totalCorridas24h: 24, exitosas: 24, errores: 0, sinDatos: 0, tiempoPromedioSeg: 286 },
-            { identificadorETL: "SITRAPESCA", ultimoEstado: "PARCIAL", ultimaEjecucion: "2026-09-16 08:48:55", ultimaDuracionSeg: 952, totalCorridas24h: 26, exitosas: 0, errores: 0, sinDatos: 0, tiempoPromedioSeg: 1235 },
-            { identificadorETL: "SYG_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 01:00:03", ultimaDuracionSeg: 1, totalCorridas24h: 2, exitosas: 2, errores: 0, sinDatos: 0, tiempoPromedioSeg: 1 },
-            { identificadorETL: "SYG_ETL_OPERATIVA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:15:39", ultimaDuracionSeg: 265, totalCorridas24h: 48, exitosas: 48, errores: 0, sinDatos: 0, tiempoPromedioSeg: 193 }
-        ];
 
         let rawData = [];
         let totalSeconds = 600;
@@ -153,13 +133,29 @@
 
             try {
                 const response = await fetch(API_URL);
-                if (response.ok) {
-                    rawData = await response.json();
-                } else {
-                    rawData = datosMock;
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Error al obtener respuesta del servidor`);
                 }
+                
+                const jsonResult = await response.json();
+                
+                // Normaliza las propiedades para tolerar variantes de nombres en SQL Server
+                rawData = jsonResult.map(item => ({
+                    identificadorETL: item.identificadorETL || item.IdentificadorETL || item.NombreETL || 'DESCONOCIDO',
+                    ultimoEstado: item.ultimoEstado || item.UltimoEstado || item.Estado || 'SIN_DATOS',
+                    ultimaEjecucion: item.ultimaEjecucion || item.UltimaEjecucion || item.FechaEjecucion || '-',
+                    ultimaDuracionSeg: (item.ultimaDuracionSeg !== undefined) ? item.ultimaDuracionSeg : item.UltimaDuracionSeg,
+                    totalCorridas24h: item.totalCorridas24h || item.TotalCorridas24h || 0,
+                    exitosas: item.exitosas || item.Exitosas || 0,
+                    errores: item.errores || item.Errores || 0,
+                    sinDatos: item.sinDatos || item.SinDatos || 0,
+                    tiempoPromedioSeg: item.tiempoPromedioSeg || item.TiempoPromedioSeg || 0
+                }));
+
             } catch (error) {
-                rawData = datosMock;
+                console.error("Falla al conectar con la API:", error);
+                mostrarErrorEnTabla(error.message);
+                rawData = [];
             } finally {
                 actualizarKPIs(rawData);
                 filtrarTabla();
@@ -173,7 +169,7 @@
             const exitosos = data.filter(d => d.ultimoEstado === 'EXITOSO').length;
             const enProceso = data.filter(d => d.ultimoEstado === 'EN_PROCESO').length;
             const parciales = data.filter(d => d.ultimoEstado === 'PARCIAL' || d.ultimoEstado === 'SIN_DATOS').length;
-            const totalErrores = data.reduce((acc, curr) => acc + (curr.errores || 0), 0);
+            const totalErrores = data.reduce((acc, curr) => acc + (Number(curr.errores) || 0), 0);
 
             document.getElementById("kpi-total").innerText = total;
             document.getElementById("kpi-exitosos").innerText = exitosos;
@@ -181,7 +177,6 @@
             document.getElementById("kpi-parciales").innerText = parciales;
             document.getElementById("kpi-errores").innerText = totalErrores;
 
-            // Evaluación de la regla >= 2 errores
             const alertBanner = document.getElementById("alert-banner");
             const alertMessage = document.getElementById("alert-message");
             const alertCount = document.getElementById("alert-count");
@@ -212,11 +207,16 @@
             const tbody = document.getElementById("tableBody");
             tbody.innerHTML = "";
 
+            if (data.length === 0 && rawData.length > 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-400">No se encontraron procesos ETL que coincidan con la búsqueda.</td></tr>`;
+                return;
+            }
+
             data.forEach(item => {
                 const tr = document.createElement("tr");
                 tr.className = "hover:bg-slate-700/50 transition border-b border-slate-700/50";
 
-                const duracionDisplay = item.ultimaDuracionSeg !== null 
+                const duracionDisplay = (item.ultimaDuracionSeg !== null && item.ultimaDuracionSeg !== undefined)
                     ? `${item.ultimaDuracionSeg}s` 
                     : `<span class="text-blue-400 font-semibold animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Ejecutando</span>`;
 
@@ -237,6 +237,18 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        function mostrarErrorEnTabla(mensaje) {
+            const tbody = document.getElementById("tableBody");
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="py-8 text-center text-rose-400 bg-rose-950/20">
+                        <i class="fa-solid fa-circle-exclamation text-2xl mb-2"></i>
+                        <p class="font-semibold text-sm">Error de conexión con el backend de datos</p>
+                        <p class="text-xs text-slate-400 mt-1">${mensaje}</p>
+                    </td>
+                </tr>`;
         }
 
         function reiniciarTemporizador() {
