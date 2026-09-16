@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,34 +33,47 @@
                 <p class="text-slate-400">Próxima actualización:</p>
                 <p id="countdown" class="font-mono font-semibold text-indigo-400 text-sm">10:00</p>
             </div>
-            <button id="refreshBtn" onclick="cargarDatos()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2 transition">
+            <button id="refreshBtn" onclick="cargarDatos()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2 transition active:scale-95 shadow-lg shadow-indigo-600/20">
                 <i id="refreshIcon" class="fa-solid fa-rotate"></i> Actualizar
             </button>
         </div>
     </header>
 
-    <main class="p-6 max-w-7xl mx-auto space-y-6">
+    <!-- Contenedor Principal (100% de Ancho) -->
+    <main class="p-6 w-full space-y-6">
+
+        <!-- Banner de Alerta Crítica (>= 2 Errores) -->
+        <div id="alert-banner" class="hidden p-4 rounded-xl bg-rose-600/20 border border-rose-500/50 backdrop-blur-md text-rose-200 flex items-center justify-between shadow-lg animate-pulse">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-triangle-exclamation text-rose-400 text-2xl shrink-0"></i>
+                <div>
+                    <h4 class="font-bold text-rose-100">¡Alerta Crítica de Ingesta ETL!</h4>
+                    <p class="text-sm" id="alert-message">Se han detectado fallas en los procesos de ingesta.</p>
+                </div>
+            </div>
+            <span class="px-3 py-1 bg-rose-600 text-white text-xs font-bold rounded-full uppercase" id="alert-count">0 Errores</span>
+        </div>
 
         <!-- KPI Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
                 <div class="text-xs text-slate-400 uppercase font-semibold">Total Procesos</div>
                 <div id="kpi-total" class="text-3xl font-bold text-white mt-1">0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
                 <div class="text-xs text-emerald-400 uppercase font-semibold">Exitosos</div>
                 <div id="kpi-exitosos" class="text-3xl font-bold text-emerald-400 mt-1">0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
                 <div class="text-xs text-blue-400 uppercase font-semibold">En Proceso</div>
                 <div id="kpi-proceso" class="text-3xl font-bold text-blue-400 mt-1">0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                <div class="text-xs text-amber-400 uppercase font-semibold">Parciales</div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
+                <div class="text-xs text-amber-400 uppercase font-semibold">Parciales / Sin Datos</div>
                 <div id="kpi-parciales" class="text-3xl font-bold text-amber-400 mt-1">0</div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                <div class="text-xs text-rose-400 uppercase font-semibold">Errores</div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
+                <div class="text-xs text-rose-400 uppercase font-semibold">Errores Acumulados</div>
                 <div id="kpi-errores" class="text-3xl font-bold text-rose-400 mt-1">0</div>
             </div>
         </div>
@@ -69,7 +82,7 @@
         <div class="flex flex-col sm:flex-row justify-between gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
             <div class="relative w-full sm:w-80">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
-                <input type="text" id="searchInput" oninput="filtrarTabla()" placeholder="Buscar ETL..." class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                <input type="text" id="searchInput" oninput="filtrarTabla()" placeholder="Buscar ETL por nombre..." class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors">
             </div>
             <div class="flex items-center gap-2">
                 <label for="statusFilter" class="text-xs text-slate-400">Estado:</label>
@@ -89,15 +102,15 @@
                 <table class="w-full text-left text-sm text-slate-300">
                     <thead class="bg-slate-900 text-xs uppercase text-slate-400 font-semibold border-b border-slate-700">
                         <tr>
-                            <th class="py-3 px-4">Identificador ETL</th>
-                            <th class="py-3 px-4">Último Estado</th>
-                            <th class="py-3 px-4">Última Ejecución</th>
-                            <th class="py-3 px-4 text-center">Duración (seg)</th>
-                            <th class="py-3 px-4 text-center">Corridas (24h)</th>
-                            <th class="py-3 px-4 text-center">Exitosas</th>
-                            <th class="py-3 px-4 text-center">Errores</th>
-                            <th class="py-3 px-4 text-center">Sin Datos</th>
-                            <th class="py-3 px-4 text-center">Promedio (seg)</th>
+                            <th class="py-3.5 px-4">Identificador ETL</th>
+                            <th class="py-3.5 px-4">Último Estado</th>
+                            <th class="py-3.5 px-4">Última Ejecución</th>
+                            <th class="py-3.5 px-4 text-center">Duración (seg)</th>
+                            <th class="py-3.5 px-4 text-center">Corridas (24h)</th>
+                            <th class="py-3.5 px-4 text-center text-emerald-400">Exitosas</th>
+                            <th class="py-3.5 px-4 text-center text-rose-400">Errores</th>
+                            <th class="py-3.5 px-4 text-center text-slate-400">Sin Datos</th>
+                            <th class="py-3.5 px-4 text-center">Promedio (seg)</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-slate-700">
@@ -109,10 +122,8 @@
     </main>
 
     <script>
-        // Configuración de endpoint (Reemplazar con la URL real de la Azure Function)
-        const API_URL = ""; 
+        const API_URL = "/api/GetETLMonitoring"; 
 
-        // Datos de ejemplo basados en la captura de SQL Server
         const datosMock = [
             { identificadorETL: "CP_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 01:30:03", ultimaDuracionSeg: 6, totalCorridas24h: 2, exitosas: 2, errores: 0, sinDatos: 0, tiempoPromedioSeg: 6 },
             { identificadorETL: "CP_ETL_OPERATIVA", ultimoEstado: "EN_PROCESO", ultimaEjecucion: "2026-09-16 09:48:00", ultimaDuracionSeg: null, totalCorridas24h: 47, exitosas: 40, errores: 0, sinDatos: 0, tiempoPromedioSeg: 707 },
@@ -133,35 +144,54 @@
         ];
 
         let rawData = [];
-        let totalSeconds = 600; // 10 minutos para autorrefresco
+        let totalSeconds = 600;
 
         async function cargarDatos() {
             const refreshIcon = document.getElementById("refreshIcon");
             refreshIcon.classList.add("fa-spin");
 
             try {
-                if (API_URL !== "") {
-                    const response = await fetch(API_URL);
+                const response = await fetch(API_URL);
+                if (response.ok) {
                     rawData = await response.json();
                 } else {
                     rawData = datosMock;
                 }
+            } catch (error) {
+                rawData = datosMock;
+            } finally {
                 actualizarKPIs(rawData);
                 filtrarTabla();
                 reiniciarTemporizador();
-            } catch (error) {
-                console.error("Error al cargar datos:", error);
-            } finally {
                 refreshIcon.classList.remove("fa-spin");
             }
         }
 
         function actualizarKPIs(data) {
-            document.getElementById("kpi-total").innerText = data.length;
-            document.getElementById("kpi-exitosos").innerText = data.filter(d => d.ultimoEstado === 'EXITOSO').length;
-            document.getElementById("kpi-proceso").innerText = data.filter(d => d.ultimoEstado === 'EN_PROCESO').length;
-            document.getElementById("kpi-parciales").innerText = data.filter(d => d.ultimoEstado === 'PARCIAL').length;
-            document.getElementById("kpi-errores").innerText = data.filter(d => d.ultimoEstado === 'ERROR').length;
+            const total = data.length;
+            const exitosos = data.filter(d => d.ultimoEstado === 'EXITOSO').length;
+            const enProceso = data.filter(d => d.ultimoEstado === 'EN_PROCESO').length;
+            const parciales = data.filter(d => d.ultimoEstado === 'PARCIAL' || d.ultimoEstado === 'SIN_DATOS').length;
+            const totalErrores = data.reduce((acc, curr) => acc + (curr.errores || 0), 0);
+
+            document.getElementById("kpi-total").innerText = total;
+            document.getElementById("kpi-exitosos").innerText = exitosos;
+            document.getElementById("kpi-proceso").innerText = enProceso;
+            document.getElementById("kpi-parciales").innerText = parciales;
+            document.getElementById("kpi-errores").innerText = totalErrores;
+
+            // Evaluación de la regla >= 2 errores
+            const alertBanner = document.getElementById("alert-banner");
+            const alertMessage = document.getElementById("alert-message");
+            const alertCount = document.getElementById("alert-count");
+
+            if (totalErrores >= 2) {
+                alertBanner.classList.remove("hidden");
+                alertCount.innerText = `${totalErrores} ERRORES`;
+                alertMessage.innerText = `Atención: Se han registrado ${totalErrores} fallas acumuladas en los procesos de ingesta. Verifique la tabla de detalle.`;
+            } else {
+                alertBanner.classList.add("hidden");
+            }
         }
 
         function filtrarTabla() {
@@ -190,19 +220,19 @@
                     : `<span class="text-blue-400 font-semibold animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Ejecutando</span>`;
 
                 tr.innerHTML = `
-                    <td class="py-3 px-4 font-semibold text-white">${item.identificadorETL}</td>
+                    <td class="py-3 px-4 font-mono font-semibold text-white">${item.identificadorETL}</td>
                     <td class="py-3 px-4">
                         <span class="badge-${item.ultimoEstado} text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider inline-block">
                             ${item.ultimoEstado}
                         </span>
                     </td>
-                    <td class="py-3 px-4 text-slate-300">${item.ultimaEjecucion}</td>
-                    <td class="py-3 px-4 text-center">${duracionDisplay}</td>
+                    <td class="py-3 px-4 text-slate-300 font-mono text-xs">${item.ultimaEjecucion}</td>
+                    <td class="py-3 px-4 text-center font-mono">${duracionDisplay}</td>
                     <td class="py-3 px-4 text-center font-bold text-white">${item.totalCorridas24h}</td>
                     <td class="py-3 px-4 text-center text-emerald-400 font-semibold">${item.exitosas}</td>
                     <td class="py-3 px-4 text-center ${item.errores > 0 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${item.errores}</td>
                     <td class="py-3 px-4 text-center text-slate-400">${item.sinDatos}</td>
-                    <td class="py-3 px-4 text-center text-slate-300">${item.tiempoPromedioSeg}s</td>
+                    <td class="py-3 px-4 text-center text-slate-300 font-mono">${item.tiempoPromedioSeg}s</td>
                 `;
                 tbody.appendChild(tr);
             });
