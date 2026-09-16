@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Monitoreo ETL - Data Warehouse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .badge-EXITOSO { background-color: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .badge-ERROR { background-color: rgba(244, 63, 94, 0.2); color: #F43F5E; border: 1px solid rgba(244, 63, 94, 0.4); }
+        .badge-EN_PROCESO { background-color: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
+        .badge-PARCIAL { background-color: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4); }
+        .badge-SIN_DATOS { background-color: rgba(107, 114, 128, 0.2); color: #9CA3AF; border: 1px solid rgba(107, 114, 128, 0.4); }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                <i class="fa-solid fa-database text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white">Data Warehouse - Monitor de Ingesta ETL</h1>
+                <p class="text-xs text-slate-400">Capas Bronce & Silver | Últimas 48 Horas</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <div class="text-right text-xs">
+                <p class="text-slate-400">Próxima actualización:</p>
+                <p id="countdown" class="font-mono font-semibold text-indigo-400 text-sm">10:00</p>
+            </div>
+            <button id="refreshBtn" onclick="cargarDatos()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                <i id="refreshIcon" class="fa-solid fa-rotate"></i> Actualizar
+            </button>
+        </div>
+    </header>
+
+    <main class="p-6 max-w-7xl mx-auto space-y-6">
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="text-xs text-slate-400 uppercase font-semibold">Total Procesos</div>
+                <div id="kpi-total" class="text-3xl font-bold text-white mt-1">0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="text-xs text-emerald-400 uppercase font-semibold">Exitosos</div>
+                <div id="kpi-exitosos" class="text-3xl font-bold text-emerald-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="text-xs text-blue-400 uppercase font-semibold">En Proceso</div>
+                <div id="kpi-proceso" class="text-3xl font-bold text-blue-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="text-xs text-amber-400 uppercase font-semibold">Parciales</div>
+                <div id="kpi-parciales" class="text-3xl font-bold text-amber-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <div class="text-xs text-rose-400 uppercase font-semibold">Errores</div>
+                <div id="kpi-errores" class="text-3xl font-bold text-rose-400 mt-1">0</div>
+            </div>
+        </div>
+
+        <!-- Filtros y Búsqueda -->
+        <div class="flex flex-col sm:flex-row justify-between gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
+            <div class="relative w-full sm:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="filtrarTabla()" placeholder="Buscar ETL..." class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex items-center gap-2">
+                <label for="statusFilter" class="text-xs text-slate-400">Estado:</label>
+                <select id="statusFilter" onchange="filtrarTabla()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <option value="TODOS">Todos</option>
+                    <option value="EXITOSO">EXITOSO</option>
+                    <option value="EN_PROCESO">EN_PROCESO</option>
+                    <option value="PARCIAL">PARCIAL</option>
+                    <option value="ERROR">ERROR</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Tabla de Resultados -->
+        <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-900 text-xs uppercase text-slate-400 font-semibold border-b border-slate-700">
+                        <tr>
+                            <th class="py-3 px-4">Identificador ETL</th>
+                            <th class="py-3 px-4">Último Estado</th>
+                            <th class="py-3 px-4">Última Ejecución</th>
+                            <th class="py-3 px-4 text-center">Duración (seg)</th>
+                            <th class="py-3 px-4 text-center">Corridas (24h)</th>
+                            <th class="py-3 px-4 text-center">Exitosas</th>
+                            <th class="py-3 px-4 text-center">Errores</th>
+                            <th class="py-3 px-4 text-center">Sin Datos</th>
+                            <th class="py-3 px-4 text-center">Promedio (seg)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-700">
+                        <!-- Filas cargadas dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Configuración de endpoint (Reemplazar con la URL real de la Azure Function)
+        const API_URL = ""; 
+
+        // Datos de ejemplo basados en la captura de SQL Server
+        const datosMock = [
+            { identificadorETL: "CP_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 01:30:03", ultimaDuracionSeg: 6, totalCorridas24h: 2, exitosas: 2, errores: 0, sinDatos: 0, tiempoPromedioSeg: 6 },
+            { identificadorETL: "CP_ETL_OPERATIVA", ultimoEstado: "EN_PROCESO", ultimaEjecucion: "2026-09-16 09:48:00", ultimaDuracionSeg: null, totalCorridas24h: 47, exitosas: 40, errores: 0, sinDatos: 0, tiempoPromedioSeg: 707 },
+            { identificadorETL: "FAENAS_ETL", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-15 18:47:22", ultimaDuracionSeg: 344, totalCorridas24h: 10, exitosas: 3, errores: 0, sinDatos: 0, tiempoPromedioSeg: 343 },
+            { identificadorETL: "FAENAS_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:00:37", ultimaDuracionSeg: 508, totalCorridas24h: 48, exitosas: 16, errores: 0, sinDatos: 0, tiempoPromedioSeg: 375 },
+            { identificadorETL: "FAENAS_ETL_OPERATIVA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:50:36", ultimaDuracionSeg: 10, totalCorridas24h: 288, exitosas: 215, errores: 0, sinDatos: 0, tiempoPromedioSeg: 11 },
+            { identificadorETL: "IMARPE", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:41:05", ultimaDuracionSeg: 161, totalCorridas24h: 48, exitosas: 45, errores: 0, sinDatos: 0, tiempoPromedioSeg: 148 },
+            { identificadorETL: "MEGATRACK", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:55:58", ultimaDuracionSeg: 0, totalCorridas24h: 68, exitosas: 68, errores: 0, sinDatos: 0, tiempoPromedioSeg: 1 },
+            { identificadorETL: "PERUCONTROL", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:54:38", ultimaDuracionSeg: 2, totalCorridas24h: 286, exitosas: 286, errores: 0, sinDatos: 0, tiempoPromedioSeg: 2 },
+            { identificadorETL: "PESCA6", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 08:56:48", ultimaDuracionSeg: 223, totalCorridas24h: 34, exitosas: 32, errores: 1, sinDatos: 0, tiempoPromedioSeg: 126 },
+            { identificadorETL: "PRODUCE", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:27:44", ultimaDuracionSeg: 4, totalCorridas24h: 69, exitosas: 69, errores: 0, sinDatos: 0, tiempoPromedioSeg: 4 },
+            { identificadorETL: "SGP", ultimoEstado: "ERROR", ultimaEjecucion: "2026-09-16 09:13:01", ultimaDuracionSeg: 131, totalCorridas24h: 39, exitosas: 0, errores: 38, sinDatos: 0, tiempoPromedioSeg: 132 },
+            { identificadorETL: "SIGA_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 02:00:03", ultimaDuracionSeg: 132, totalCorridas24h: 2, exitosas: 2, errores: 0, sinDatos: 0, tiempoPromedioSeg: 130 },
+            { identificadorETL: "SIGA_ETL_OPERATIVA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:03:15", ultimaDuracionSeg: 273, totalCorridas24h: 24, exitosas: 24, errores: 0, sinDatos: 0, tiempoPromedioSeg: 286 },
+            { identificadorETL: "SITRAPESCA", ultimoEstado: "PARCIAL", ultimaEjecucion: "2026-09-16 08:48:55", ultimaDuracionSeg: 952, totalCorridas24h: 26, exitosas: 0, errores: 0, sinDatos: 0, tiempoPromedioSeg: 1235 },
+            { identificadorETL: "SYG_ETL_MAESTRA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 01:00:03", ultimaDuracionSeg: 1, totalCorridas24h: 2, exitosas: 2, errores: 0, sinDatos: 0, tiempoPromedioSeg: 1 },
+            { identificadorETL: "SYG_ETL_OPERATIVA", ultimoEstado: "EXITOSO", ultimaEjecucion: "2026-09-16 09:15:39", ultimaDuracionSeg: 265, totalCorridas24h: 48, exitosas: 48, errores: 0, sinDatos: 0, tiempoPromedioSeg: 193 }
+        ];
+
+        let rawData = [];
+        let totalSeconds = 600; // 10 minutos para autorrefresco
+
+        async function cargarDatos() {
+            const refreshIcon = document.getElementById("refreshIcon");
+            refreshIcon.classList.add("fa-spin");
+
+            try {
+                if (API_URL !== "") {
+                    const response = await fetch(API_URL);
+                    rawData = await response.json();
+                } else {
+                    rawData = datosMock;
+                }
+                actualizarKPIs(rawData);
+                filtrarTabla();
+                reiniciarTemporizador();
+            } catch (error) {
+                console.error("Error al cargar datos:", error);
+            } finally {
+                refreshIcon.classList.remove("fa-spin");
+            }
+        }
+
+        function actualizarKPIs(data) {
+            document.getElementById("kpi-total").innerText = data.length;
+            document.getElementById("kpi-exitosos").innerText = data.filter(d => d.ultimoEstado === 'EXITOSO').length;
+            document.getElementById("kpi-proceso").innerText = data.filter(d => d.ultimoEstado === 'EN_PROCESO').length;
+            document.getElementById("kpi-parciales").innerText = data.filter(d => d.ultimoEstado === 'PARCIAL').length;
+            document.getElementById("kpi-errores").innerText = data.filter(d => d.ultimoEstado === 'ERROR').length;
+        }
+
+        function filtrarTabla() {
+            const searchVal = document.getElementById("searchInput").value.toLowerCase();
+            const filterVal = document.getElementById("statusFilter").value;
+
+            const datosFiltrados = rawData.filter(item => {
+                const matchSearch = item.identificadorETL.toLowerCase().includes(searchVal);
+                const matchStatus = (filterVal === 'TODOS') || (item.ultimoEstado === filterVal);
+                return matchSearch && matchStatus;
+            });
+
+            renderizarTabla(datosFiltrados);
+        }
+
+        function renderizarTabla(data) {
+            const tbody = document.getElementById("tableBody");
+            tbody.innerHTML = "";
+
+            data.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-700/50 transition border-b border-slate-700/50";
+
+                const duracionDisplay = item.ultimaDuracionSeg !== null 
+                    ? `${item.ultimaDuracionSeg}s` 
+                    : `<span class="text-blue-400 font-semibold animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Ejecutando</span>`;
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-white">${item.identificadorETL}</td>
+                    <td class="py-3 px-4">
+                        <span class="badge-${item.ultimoEstado} text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider inline-block">
+                            ${item.ultimoEstado}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-300">${item.ultimaEjecucion}</td>
+                    <td class="py-3 px-4 text-center">${duracionDisplay}</td>
+                    <td class="py-3 px-4 text-center font-bold text-white">${item.totalCorridas24h}</td>
+                    <td class="py-3 px-4 text-center text-emerald-400 font-semibold">${item.exitosas}</td>
+                    <td class="py-3 px-4 text-center ${item.errores > 0 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${item.errores}</td>
+                    <td class="py-3 px-4 text-center text-slate-400">${item.sinDatos}</td>
+                    <td class="py-3 px-4 text-center text-slate-300">${item.tiempoPromedioSeg}s</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function reiniciarTemporizador() {
+            totalSeconds = 600;
+        }
+
+        setInterval(() => {
+            if (totalSeconds <= 0) {
+                cargarDatos();
+            } else {
+                totalSeconds--;
+                const min = Math.floor(totalSeconds / 60);
+                const sec = totalSeconds % 60;
+                document.getElementById("countdown").innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+
+        window.onload = cargarDatos;
+    </script>
+</body>
+</html>
