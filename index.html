@@ -1,272 +1,248 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Monitoreo ETL - Data Warehouse</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .badge-EXITOSO { background-color: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); }
-        .badge-ERROR { background-color: rgba(244, 63, 94, 0.2); color: #F43F5E; border: 1px solid rgba(244, 63, 94, 0.4); }
-        .badge-EN_PROCESO { background-color: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
-        .badge-PARCIAL { background-color: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4); }
-        .badge-SIN_DATOS { background-color: rgba(107, 114, 128, 0.2); color: #9CA3AF; border: 1px solid rgba(107, 114, 128, 0.4); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Warehouse - Monitor de Ingesta ETL</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-6 font-sans">
 
-    <!-- Header / Navbar -->
-    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div class="flex items-center space-x-3">
-            <div class="p-2 bg-indigo-600 rounded-lg text-white">
-                <i class="fa-solid fa-database text-2xl"></i>
-            </div>
-            <div>
-                <h1 class="text-xl font-bold text-white">Data Warehouse - Monitor de Ingesta ETL</h1>
-                <p class="text-xs text-slate-400">Capas Bronce & Silver | Últimas 48 Horas</p>
-            </div>
-        </div>
-
-        <div class="flex items-center space-x-4">
-            <div class="text-right text-xs">
-                <p class="text-slate-400">Próxima actualización:</p>
-                <p id="countdown" class="font-mono font-semibold text-indigo-400 text-sm">10:00</p>
-            </div>
-            <button id="refreshBtn" onclick="cargarDatos()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2 transition active:scale-95 shadow-lg shadow-indigo-600/20">
-                <i id="refreshIcon" class="fa-solid fa-rotate"></i> Actualizar
-            </button>
-        </div>
+  <div class="max-w-7xl mx-auto space-y-6">
+    
+    <!-- Encabezado -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-lg gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-sky-400 flex items-center gap-2">
+          <i class="fa-solid font-sharp fa-database"></i> Data Warehouse - Monitor de Ingesta ETL
+        </h1>
+        <p class="text-xs text-slate-400 mt-1">Conexión en vivo con Azure Function & SQL Server</p>
+      </div>
+      <button onclick="cargarDatos()" class="bg-sky-600 hover:bg-sky-500 text-white px-5 py-2.5 rounded-lg shadow font-medium transition flex items-center gap-2">
+        <i class="fa-solid fa-rotate"></i> Actualizar Datos
+      </button>
     </header>
 
-    <!-- Contenedor Principal -->
-    <main class="p-6 w-full space-y-6">
+    <!-- Panel de Estado / Salida de Mensajes -->
+    <div id="statusBox" class="hidden p-4 rounded-xl font-mono text-sm border shadow-md"></div>
 
-        <!-- Banner de Alerta Crítica (>= 2 Errores) -->
-        <div id="alert-banner" class="hidden p-4 rounded-xl bg-rose-600/20 border border-rose-500/50 backdrop-blur-md text-rose-200 flex items-center justify-between shadow-lg animate-pulse">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-triangle-exclamation text-rose-400 text-2xl shrink-0"></i>
-                <div>
-                    <h4 class="font-bold text-rose-100">¡Alerta Crítica de Ingesta ETL!</h4>
-                    <p class="text-sm" id="alert-message">Se han detectado fallas en los procesos de ingesta.</p>
-                </div>
-            </div>
-            <span class="px-3 py-1 bg-rose-600 text-white text-xs font-bold rounded-full uppercase" id="alert-count">0 Errores</span>
+    <!-- Tarjetas KPI -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
+        <p class="text-xs text-slate-400 uppercase font-semibold">Total Procesos</p>
+        <p id="kpiTotal" class="text-3xl font-extrabold text-white mt-1">0</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
+        <p class="text-xs text-emerald-400 uppercase font-semibold">Exitosos</p>
+        <p id="kpiExitosos" class="text-3xl font-extrabold text-emerald-400 mt-1">0</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
+        <p class="text-xs text-amber-400 uppercase font-semibold">En Proceso</p>
+        <p id="kpiEnProceso" class="text-3xl font-extrabold text-amber-400 mt-1">0</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
+        <p class="text-xs text-rose-400 uppercase font-semibold">Fallidos</p>
+        <p id="kpiFallidos" class="text-3xl font-extrabold text-rose-400 mt-1">0</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow col-span-2 md:col-span-1">
+        <p class="text-xs text-slate-400 uppercase font-semibold">Registros Totales</p>
+        <p id="kpiRegistros" class="text-3xl font-extrabold text-sky-400 mt-1">0</p>
+      </div>
+    </div>
+
+    <!-- Formulario para Insertar Nuevo Registro (POST) -->
+    <div class="bg-slate-900 p-5 rounded-xl shadow border border-slate-800">
+      <h2 class="text-md font-semibold mb-3 text-emerald-400 flex items-center gap-2">
+        <i class="fa-solid fa-plus-circle"></i> Insertar Nuevo Registro ETL
+      </h2>
+      <form id="etlForm" onsubmit="insertarRegistro(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Nombre del Proceso</label>
+          <input type="text" id="proceso" required placeholder="Ej: Ingesta_Ventas" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sky-500">
         </div>
-
-        <!-- KPI Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
-                <div class="text-xs text-slate-400 uppercase font-semibold">Total Procesos</div>
-                <div id="kpi-total" class="text-3xl font-bold text-white mt-1">0</div>
-            </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
-                <div class="text-xs text-emerald-400 uppercase font-semibold">Exitosos</div>
-                <div id="kpi-exitosos" class="text-3xl font-bold text-emerald-400 mt-1">0</div>
-            </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
-                <div class="text-xs text-blue-400 uppercase font-semibold">En Proceso</div>
-                <div id="kpi-proceso" class="text-3xl font-bold text-blue-400 mt-1">0</div>
-            </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
-                <div class="text-xs text-amber-400 uppercase font-semibold">Parciales / Sin Datos</div>
-                <div id="kpi-parciales" class="text-3xl font-bold text-amber-400 mt-1">0</div>
-            </div>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
-                <div class="text-xs text-rose-400 uppercase font-semibold">Errores Acumulados</div>
-                <div id="kpi-errores" class="text-3xl font-bold text-rose-400 mt-1">0</div>
-            </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Estado</label>
+          <select id="estado" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sky-500">
+            <option value="EXITOSO">EXITOSO</option>
+            <option value="FALLIDO">FALLIDO</option>
+            <option value="EN PROCESO">EN PROCESO</option>
+          </select>
         </div>
-
-        <!-- Filtros y Búsqueda -->
-        <div class="flex flex-col sm:flex-row justify-between gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="relative w-full sm:w-80">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
-                <input type="text" id="searchInput" oninput="filtrarTabla()" placeholder="Buscar ETL por nombre..." class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors">
-            </div>
-            <div class="flex items-center gap-2">
-                <label for="statusFilter" class="text-xs text-slate-400">Estado:</label>
-                <select id="statusFilter" onchange="filtrarTabla()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
-                    <option value="TODOS">Todos</option>
-                    <option value="EXITOSO">EXITOSO</option>
-                    <option value="EN_PROCESO">EN_PROCESO</option>
-                    <option value="PARCIAL">PARCIAL</option>
-                    <option value="ERROR">ERROR</option>
-                </select>
-            </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Registros Procesados</label>
+          <input type="number" id="registrosProcesados" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sky-500">
         </div>
-
-        <!-- Tabla de Resultados -->
-        <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-slate-300">
-                    <thead class="bg-slate-900 text-xs uppercase text-slate-400 font-semibold border-b border-slate-700">
-                        <tr>
-                            <th class="py-3.5 px-4">Identificador ETL</th>
-                            <th class="py-3.5 px-4">Último Estado</th>
-                            <th class="py-3.5 px-4">Última Ejecución</th>
-                            <th class="py-3.5 px-4 text-center">Duración (seg)</th>
-                            <th class="py-3.5 px-4 text-center">Corridas (24h)</th>
-                            <th class="py-3.5 px-4 text-center text-emerald-400">Exitosas</th>
-                            <th class="py-3.5 px-4 text-center text-rose-400">Errores</th>
-                            <th class="py-3.5 px-4 text-center text-slate-400">Sin Datos</th>
-                            <th class="py-3.5 px-4 text-center">Promedio (seg)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody" class="divide-y divide-slate-700">
-                        <!-- Filas cargadas dinámicamente -->
-                    </tbody>
-                </table>
-            </div>
+        <div class="flex items-end">
+          <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
+          </button>
         </div>
-    </main>
+      </form>
+    </div>
 
-    <script>
-        const API_URL = "https://functmonitor-dbagd9hybcdzangr.eastus-01.azurewebsites.net/api/GetETLMonitoring";
+    <!-- Controles de Filtro y Búsqueda -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
+      <div class="relative w-full md:w-96">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-sm"></i>
+        <input type="text" id="searchInput" oninput="filtrarTabla()" placeholder="Buscar por proceso o tabla..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+      </div>
+      <div class="flex items-center gap-2 w-full md:w-auto">
+        <label class="text-xs text-slate-400">Filtrar Estado:</label>
+        <select id="filterEstado" onchange="filtrarTabla()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500">
+          <option value="TODOS">Todos</option>
+          <option value="EXITOSO">EXITOSO</option>
+          <option value="FALLIDO">FALLIDO</option>
+          <option value="EN PROCESO">EN PROCESO</option>
+        </select>
+      </div>
+    </div>
 
-        let rawData = [];
-        let totalSeconds = 600;
+    <!-- Tabla de Datos -->
+    <div class="bg-slate-900 rounded-xl border border-slate-800 shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
+            <tr>
+              <th class="p-3">ID / Proceso</th>
+              <th class="p-3">Estado</th>
+              <th class="p-3 text-right">Registros</th>
+              <th class="p-3">Fecha / Hora</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-800 text-slate-300">
+            <tr>
+              <td colspan="4" class="p-6 text-center text-slate-500">Haz clic en "Actualizar Datos" para consultar SQL Server...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-        async function cargarDatos() {
-            const refreshIcon = document.getElementById("refreshIcon");
-            refreshIcon.classList.add("fa-spin");
+  </div>
 
-            try {
-                const response = await fetch(API_URL);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: Error al obtener respuesta del servidor`);
-                }
-                
-                const jsonResult = await response.json();
-                
-                // Normaliza las propiedades para tolerar variantes de nombres en SQL Server
-                rawData = jsonResult.map(item => ({
-                    identificadorETL: item.identificadorETL || item.IdentificadorETL || item.NombreETL || 'DESCONOCIDO',
-                    ultimoEstado: item.ultimoEstado || item.UltimoEstado || item.Estado || 'SIN_DATOS',
-                    ultimaEjecucion: item.ultimaEjecucion || item.UltimaEjecucion || item.FechaEjecucion || '-',
-                    ultimaDuracionSeg: (item.ultimaDuracionSeg !== undefined) ? item.ultimaDuracionSeg : item.UltimaDuracionSeg,
-                    totalCorridas24h: item.totalCorridas24h || item.TotalCorridas24h || 0,
-                    exitosas: item.exitosas || item.Exitosas || 0,
-                    errores: item.errores || item.Errores || 0,
-                    sinDatos: item.sinDatos || item.SinDatos || 0,
-                    tiempoPromedioSeg: item.tiempoPromedioSeg || item.TiempoPromedioSeg || 0
-                }));
+  <script>
+    const API_URL = "/api/GetETLMonitoring";
+    let rawData = [];
 
-            } catch (error) {
-                console.error("Falla al conectar con la API:", error);
-                mostrarErrorEnTabla(error.message);
-                rawData = [];
-            } finally {
-                actualizarKPIs(rawData);
-                filtrarTabla();
-                reiniciarTemporizador();
-                refreshIcon.classList.remove("fa-spin");
-            }
-        }
+    function mostrarEstado(mensaje, esError = false) {
+      const box = document.getElementById("statusBox");
+      box.classList.remove("hidden", "bg-red-950", "border-red-600", "text-red-200", "bg-emerald-950", "border-emerald-600", "text-emerald-200");
+      box.classList.add(esError ? "bg-red-950" : "bg-emerald-950", esError ? "border-red-600" : "border-emerald-600", esError ? "text-red-200" : "text-emerald-200");
+      box.innerText = mensaje;
+    }
 
-        function actualizarKPIs(data) {
-            const total = data.length;
-            const exitosos = data.filter(d => d.ultimoEstado === 'EXITOSO').length;
-            const enProceso = data.filter(d => d.ultimoEstado === 'EN_PROCESO').length;
-            const parciales = data.filter(d => d.ultimoEstado === 'PARCIAL' || d.ultimoEstado === 'SIN_DATOS').length;
-            const totalErrores = data.reduce((acc, curr) => acc + (Number(curr.errores) || 0), 0);
+    async function cargarDatos() {
+      mostrarEstado("Consultando Stored Procedure en SQL Server...", false);
+      try {
+        const res = await fetch(API_URL);
+        const result = await res.json();
 
-            document.getElementById("kpi-total").innerText = total;
-            document.getElementById("kpi-exitosos").innerText = exitosos;
-            document.getElementById("kpi-proceso").innerText = enProceso;
-            document.getElementById("kpi-parciales").innerText = parciales;
-            document.getElementById("kpi-errores").innerText = totalErrores;
+        if (!res.ok) throw new Error(result.message || `Error HTTP ${res.status}`);
 
-            const alertBanner = document.getElementById("alert-banner");
-            const alertMessage = document.getElementById("alert-message");
-            const alertCount = document.getElementById("alert-count");
+        // Acepta respuesta en formato { data: [...] } o arreglo directo
+        rawData = result.data || result;
+        if (!Array.isArray(rawData)) rawData = [];
 
-            if (totalErrores >= 2) {
-                alertBanner.classList.remove("hidden");
-                alertCount.innerText = `${totalErrores} ERRORES`;
-                alertMessage.innerText = `Atención: Se han registrado ${totalErrores} fallas acumuladas en los procesos de ingesta. Verifique la tabla de detalle.`;
-            } else {
-                alertBanner.classList.add("hidden");
-            }
-        }
+        mostrarEstado(`✅ Datos cargados correctamente. Registros obtenidos: ${rawData.length}`, false);
+        actualizarKPIs();
+        filtrarTabla();
+      } catch (err) {
+        mostrarEstado(`❌ Error de conexión: ${err.message}`, true);
+        document.getElementById("tableBody").innerHTML = `
+          <tr><td colspan="4" class="p-6 text-center text-rose-400 font-semibold">Error al conectar con la base de datos: ${err.message}</td></tr>
+        `;
+      }
+    }
 
-        function filtrarTabla() {
-            const searchVal = document.getElementById("searchInput").value.toLowerCase();
-            const filterVal = document.getElementById("statusFilter").value;
+    function actualizarKPIs() {
+      const total = rawData.length;
+      const exitosos = rawData.filter(d => (d.Estado || d.estado || '').toUpperCase() === 'EXITOSO').length;
+      const enProceso = rawData.filter(d => (d.Estado || d.estado || '').toUpperCase() === 'EN PROCESO').length;
+      const fallidos = rawData.filter(d => (d.Estado || d.estado || '').toUpperCase() === 'FALLIDO').length;
+      const registros = rawData.reduce((acc, d) => acc + (parseInt(d.RegistrosProcesados || d.registrosProcesados || 0)), 0);
 
-            const datosFiltrados = rawData.filter(item => {
-                const matchSearch = item.identificadorETL.toLowerCase().includes(searchVal);
-                const matchStatus = (filterVal === 'TODOS') || (item.ultimoEstado === filterVal);
-                return matchSearch && matchStatus;
-            });
+      document.getElementById("kpiTotal").innerText = total;
+      document.getElementById("kpiExitosos").innerText = exitosos;
+      document.getElementById("kpiEnProceso").innerText = enProceso;
+      document.getElementById("kpiFallidos").innerText = fallidos;
+      document.getElementById("kpiRegistros").innerText = registros.toLocaleString();
+    }
 
-            renderizarTabla(datosFiltrados);
-        }
+    function filtrarTabla() {
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const filterEst = document.getElementById("filterEstado").value;
 
-        function renderizarTabla(data) {
-            const tbody = document.getElementById("tableBody");
-            tbody.innerHTML = "";
+      const filtrados = rawData.filter(item => {
+        const proceso = (item.Proceso || item.proceso || item.NombreProceso || 'N/A').toLowerCase();
+        const estado = (item.Estado || item.estado || '').toUpperCase();
+        
+        const coincideBusqueda = proceso.includes(search);
+        const coincideEstado = filterEst === "TODOS" || estado === filterEst;
 
-            if (data.length === 0 && rawData.length > 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-400">No se encontraron procesos ETL que coincidan con la búsqueda.</td></tr>`;
-                return;
-            }
+        return coincideBusqueda && coincideEstado;
+      });
 
-            data.forEach(item => {
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-700/50 transition border-b border-slate-700/50";
+      renderTabla(filtrados);
+    }
 
-                const duracionDisplay = (item.ultimaDuracionSeg !== null && item.ultimaDuracionSeg !== undefined)
-                    ? `${item.ultimaDuracionSeg}s` 
-                    : `<span class="text-blue-400 font-semibold animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Ejecutando</span>`;
+    function renderTabla(datos) {
+      const tbody = document.getElementById("tableBody");
+      if (datos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">No se encontraron registros.</td></tr>`;
+        return;
+      }
 
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-mono font-semibold text-white">${item.identificadorETL}</td>
-                    <td class="py-3 px-4">
-                        <span class="badge-${item.ultimoEstado} text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider inline-block">
-                            ${item.ultimoEstado}
-                        </span>
-                    </td>
-                    <td class="py-3 px-4 text-slate-300 font-mono text-xs">${item.ultimaEjecucion}</td>
-                    <td class="py-3 px-4 text-center font-mono">${duracionDisplay}</td>
-                    <td class="py-3 px-4 text-center font-bold text-white">${item.totalCorridas24h}</td>
-                    <td class="py-3 px-4 text-center text-emerald-400 font-semibold">${item.exitosas}</td>
-                    <td class="py-3 px-4 text-center ${item.errores > 0 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${item.errores}</td>
-                    <td class="py-3 px-4 text-center text-slate-400">${item.sinDatos}</td>
-                    <td class="py-3 px-4 text-center text-slate-300 font-mono">${item.tiempoPromedioSeg}s</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
+      tbody.innerHTML = datos.map(item => {
+        const proceso = item.Proceso || item.proceso || item.NombreProceso || 'N/A';
+        const estado = (item.Estado || item.estado || 'DESCONOCIDO').toUpperCase();
+        const registros = item.RegistrosProcesados || item.registrosProcesados || 0;
+        const fecha = item.FechaCreacion || item.fechaCreacion || item.Fecha || 'N/A';
 
-        function mostrarErrorEnTabla(mensaje) {
-            const tbody = document.getElementById("tableBody");
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="9" class="py-8 text-center text-rose-400 bg-rose-950/20">
-                        <i class="fa-solid fa-circle-exclamation text-2xl mb-2"></i>
-                        <p class="font-semibold text-sm">Error de conexión con el backend de datos</p>
-                        <p class="text-xs text-slate-400 mt-1">${mensaje}</p>
-                    </td>
-                </tr>`;
-        }
+        let badgeColor = "bg-slate-800 text-slate-300";
+        if (estado === "EXITOSO") badgeColor = "bg-emerald-950 text-emerald-400 border border-emerald-800";
+        if (estado === "FALLIDO") badgeColor = "bg-rose-950 text-rose-400 border border-rose-800";
+        if (estado === "EN PROCESO") badgeColor = "bg-amber-950 text-amber-400 border border-amber-800";
 
-        function reiniciarTemporizador() {
-            totalSeconds = 600;
-        }
+        return `
+          <tr class="hover:bg-slate-800/50 transition">
+            <td class="p-3 font-semibold text-sky-400">${proceso}</td>
+            <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${estado}</span></td>
+            <td class="p-3 text-right font-mono">${parseInt(registros).toLocaleString()}</td>
+            <td class="p-3 text-slate-400">${fecha}</td>
+          </tr>
+        `;
+      }).join('');
+    }
 
-        setInterval(() => {
-            if (totalSeconds <= 0) {
-                cargarDatos();
-            } else {
-                totalSeconds--;
-                const min = Math.floor(totalSeconds / 60);
-                const sec = totalSeconds % 60;
-                document.getElementById("countdown").innerText = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-            }
-        }, 1000);
+    async function insertarRegistro(e) {
+      e.preventDefault();
+      const proceso = document.getElementById("proceso").value;
+      const estado = document.getElementById("estado").value;
+      const registrosProcesados = parseInt(document.getElementById("registrosProcesados").value);
 
-        window.onload = cargarDatos;
-    </script>
+      mostrarEstado("Guardando registro en SQL Server...", false);
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ proceso, estado, registrosProcesados })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || `Error HTTP ${res.status}`);
+
+        mostrarEstado("✅ Registro insertado exitosamente", false);
+        document.getElementById("etlForm").reset();
+        cargarDatos();
+      } catch (err) {
+        mostrarEstado(`❌ Error al insertar: ${err.message}`, true);
+      }
+    }
+
+    // Cargar automáticamente al entrar
+    cargarDatos();
+  </script>
 </body>
 </html>
