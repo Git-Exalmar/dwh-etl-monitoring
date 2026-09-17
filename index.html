@@ -3,246 +3,263 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Warehouse - Monitor de Ingesta ETL</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-6 font-sans">
+  <title>Dashboard de Monitoreo ETL</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --success: #22c55e;
+      --error: #ef4444;
+      --process: #3b82f6;
+    }
 
-  <div class="max-w-7xl mx-auto space-y-6">
-    
-    <!-- Encabezado -->
-    <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-lg gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-sky-400 flex items-center gap-2">
-          <i class="fa-solid font-sharp fa-database"></i> Data Warehouse - Monitor de Ingesta ETL
-        </h1>
-        <p class="text-xs text-slate-400 mt-1">Conexión en vivo con Azure Function & SQL Server</p>
-      </div>
-      <button onclick="cargarDatos()" class="bg-sky-600 hover:bg-sky-500 text-white px-5 py-2.5 rounded-lg shadow font-medium transition flex items-center gap-2">
-        <i class="fa-solid fa-rotate"></i> Actualizar Datos
-      </button>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .btn-refresh {
+      background-color: var(--process);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .btn-refresh:hover {
+      background-color: #2563eb;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background-color: var(--card-bg);
+      padding: 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .stat-card .label {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-card .value {
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+
+    .table-container {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: #0f172a;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-EXITOSO { background-color: rgba(34, 197, 94, 0.2); color: var(--success); }
+    .badge-ERROR { background-color: rgba(239, 68, 68, 0.2); color: var(--error); }
+    .badge-EN_PROCESO { background-color: rgba(59, 130, 246, 0.2); color: var(--process); }
+
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Monitoreo de Procesos ETL</h1>
+      <button class="btn-refresh" onclick="cargarMonitoreo()">Actualizar</button>
     </header>
 
-    <!-- Panel de Estado / Salida de Mensajes -->
-    <div id="statusBox" class="hidden p-4 rounded-xl font-mono text-sm border shadow-md"></div>
-
-    <!-- Tarjetas KPI -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
-        <p class="text-xs text-slate-400 uppercase font-semibold">Total Procesos</p>
-        <p id="kpiTotal" class="text-3xl font-extrabold text-white mt-1">0</p>
+    <!-- Resumen rápido de métricas -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="label">Total ETLs</div>
+        <div class="value" id="stat-total">-</div>
       </div>
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
-        <p class="text-xs text-emerald-400 uppercase font-semibold">Exitosos</p>
-        <p id="kpiExitosos" class="text-3xl font-extrabold text-emerald-400 mt-1">0</p>
+      <div class="stat-card">
+        <div class="label">Exitosas</div>
+        <div class="value" style="color: var(--success);" id="stat-exitosas">-</div>
       </div>
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
-        <p class="text-xs text-amber-400 uppercase font-semibold">En Proceso</p>
-        <p id="kpiEnProceso" class="text-3xl font-extrabold text-amber-400 mt-1">0</p>
+      <div class="stat-card">
+        <div class="label">Con Errores</div>
+        <div class="value" style="color: var(--error);" id="stat-errores">-</div>
       </div>
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow">
-        <p class="text-xs text-rose-400 uppercase font-semibold">Fallidos</p>
-        <p id="kpiFallidos" class="text-3xl font-extrabold text-rose-400 mt-1">0</p>
-      </div>
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow col-span-2 md:col-span-1">
-        <p class="text-xs text-slate-400 uppercase font-semibold">Registros Totales</p>
-        <p id="kpiRegistros" class="text-3xl font-extrabold text-sky-400 mt-1">0</p>
+      <div class="stat-card">
+        <div class="label">En Proceso</div>
+        <div class="value" style="color: var(--process);" id="stat-proceso">-</div>
       </div>
     </div>
 
-    <!-- Formulario para Insertar Nuevo Registro (POST) -->
-    <div class="bg-slate-900 p-5 rounded-xl shadow border border-slate-800">
-      <h2 class="text-md font-semibold mb-3 text-emerald-400 flex items-center gap-2">
-        <i class="fa-solid fa-plus-circle"></i> Insertar Nuevo Registro ETL
-      </h2>
-      <form id="etlForm" onsubmit="insertarRegistro(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">Nombre del Proceso</label>
-          <input type="text" id="proceso" required placeholder="Ej: Ingesta_Ventas" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sky-500">
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">Estado</label>
-          <select id="estado" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sky-500">
-            <option value="EXITOSO">EXITOSO</option>
-            <option value="FALLIDO">FALLIDO</option>
-            <option value="EN PROCESO">EN PROCESO</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-400 mb-1">Registros Procesados</label>
-          <input type="number" id="registrosProcesados" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sky-500">
-        </div>
-        <div class="flex items-end">
-          <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar
-          </button>
-        </div>
-      </form>
+    <!-- Tabla con los datos devueltos por el Stored Procedure -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Identificador ETL</th>
+            <th>Último Estado</th>
+            <th>Última Ejecución</th>
+            <th>Duración (seg)</th>
+            <th>Corridas (24h)</th>
+            <th>Promedio (seg)</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-body">
+          <tr>
+            <td colspan="6" class="loading">Cargando datos del servidor...</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-
-    <!-- Controles de Filtro y Búsqueda -->
-    <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
-      <div class="relative w-full md:w-96">
-        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-sm"></i>
-        <input type="text" id="searchInput" oninput="filtrarTabla()" placeholder="Buscar por proceso o tabla..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
-      </div>
-      <div class="flex items-center gap-2 w-full md:w-auto">
-        <label class="text-xs text-slate-400">Filtrar Estado:</label>
-        <select id="filterEstado" onchange="filtrarTabla()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500">
-          <option value="TODOS">Todos</option>
-          <option value="EXITOSO">EXITOSO</option>
-          <option value="FALLIDO">FALLIDO</option>
-          <option value="EN PROCESO">EN PROCESO</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Tabla de Datos -->
-    <div class="bg-slate-900 rounded-xl border border-slate-800 shadow overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
-            <tr>
-              <th class="p-3">ID / Proceso</th>
-              <th class="p-3">Estado</th>
-              <th class="p-3 text-right">Registros</th>
-              <th class="p-3">Fecha / Hora</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody" class="divide-y divide-slate-800 text-slate-300">
-            <tr>
-              <td colspan="4" class="p-6 text-center text-slate-500">Haz clic en "Actualizar Datos" para consultar SQL Server...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
 
   <script>
-    const API_URL = "/api/GetETLMonitoring";
-    let rawData = [];
+    // URL generada por ngrok (actualízala si reinicias ngrok)
+    const API_URL = "https://pentagram-gaffe-unvalued.ngrok-free.dev/api/GetETLMonitoring";
 
-    function mostrarEstado(mensaje, esError = false) {
-      const box = document.getElementById("statusBox");
-      box.classList.remove("hidden", "bg-red-950", "border-red-600", "text-red-200", "bg-emerald-950", "border-emerald-600", "text-emerald-200");
-      box.classList.add(esError ? "bg-red-950" : "bg-emerald-950", esError ? "border-red-600" : "border-emerald-600", esError ? "text-red-200" : "text-emerald-200");
-      box.innerText = mensaje;
-    }
-
-    async function cargarDatos() {
-      mostrarEstado("Consultando Stored Procedure en SQL Server...", false);
+    async function cargarMonitoreo() {
+      const tbody = document.getElementById('tabla-body');
+      
       try {
-        const res = await fetch(API_URL);
-        const result = await res.json();
+        // Petición con el header para evitar la pantalla de aviso de ngrok
+        const response = await fetch(API_URL, {
+          method: 'GET',
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+            'Content-Type': 'application/json'
+          }
+        });
 
-        if (!res.ok) throw new Error(result.message || `Error HTTP ${res.status}`);
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
 
-        // Acepta respuesta en formato { data: [...] } o arreglo directo
-        rawData = result.data || result;
-        if (!Array.isArray(rawData)) rawData = [];
+        const data = await response.json();
+        renderizarTabla(data);
+        actualizarMetricas(data);
 
-        mostrarEstado(`✅ Datos cargados correctamente. Registros obtenidos: ${rawData.length}`, false);
-        actualizarKPIs();
-        filtrarTabla();
-      } catch (err) {
-        mostrarEstado(`❌ Error de conexión: ${err.message}`, true);
-        document.getElementById("tableBody").innerHTML = `
-          <tr><td colspan="4" class="p-6 text-center text-rose-400 font-semibold">Error al conectar con la base de datos: ${err.message}</td></tr>
-        `;
+      } catch (error) {
+        console.error("Error al cargar datos:", error);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="loading" style="color: var(--error);">
+              Error al conectar con la API: ${error.message}
+            </td>
+          </tr>`;
       }
     }
 
-    function actualizarKPIs() {
-      const total = rawData.length;
-      const exitosos = rawData.filter(d => (d.Estado || d.estado || '').toUpperCase() === 'EXITOSO').length;
-      const enProceso = rawData.filter(d => (d.Estado || d.estado || '').toUpperCase() === 'EN PROCESO').length;
-      const fallidos = rawData.filter(d => (d.Estado || d.estado || '').toUpperCase() === 'FALLIDO').length;
-      const registros = rawData.reduce((acc, d) => acc + (parseInt(d.RegistrosProcesados || d.registrosProcesados || 0)), 0);
+    function renderizarTabla(data) {
+      const tbody = document.getElementById('tabla-body');
+      tbody.innerHTML = '';
 
-      document.getElementById("kpiTotal").innerText = total;
-      document.getElementById("kpiExitosos").innerText = exitosos;
-      document.getElementById("kpiEnProceso").innerText = enProceso;
-      document.getElementById("kpiFallidos").innerText = fallidos;
-      document.getElementById("kpiRegistros").innerText = registros.toLocaleString();
-    }
-
-    function filtrarTabla() {
-      const search = document.getElementById("searchInput").value.toLowerCase();
-      const filterEst = document.getElementById("filterEstado").value;
-
-      const filtrados = rawData.filter(item => {
-        const proceso = (item.Proceso || item.proceso || item.NombreProceso || 'N/A').toLowerCase();
-        const estado = (item.Estado || item.estado || '').toUpperCase();
-        
-        const coincideBusqueda = proceso.includes(search);
-        const coincideEstado = filterEst === "TODOS" || estado === filterEst;
-
-        return coincideBusqueda && coincideEstado;
-      });
-
-      renderTabla(filtrados);
-    }
-
-    function renderTabla(datos) {
-      const tbody = document.getElementById("tableBody");
-      if (datos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">No se encontraron registros.</td></tr>`;
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">No hay datos disponibles</td></tr>';
         return;
       }
 
-      tbody.innerHTML = datos.map(item => {
-        const proceso = item.Proceso || item.proceso || item.NombreProceso || 'N/A';
-        const estado = (item.Estado || item.estado || 'DESCONOCIDO').toUpperCase();
-        const registros = item.RegistrosProcesados || item.registrosProcesados || 0;
-        const fecha = item.FechaCreacion || item.fechaCreacion || item.Fecha || 'N/A';
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        // Determinar clase de estilo según estado
+        const estadoClass = item.ultimoEstado ? `badge-${item.ultimoEstado}` : '';
 
-        let badgeColor = "bg-slate-800 text-slate-300";
-        if (estado === "EXITOSO") badgeColor = "bg-emerald-950 text-emerald-400 border border-emerald-800";
-        if (estado === "FALLIDO") badgeColor = "bg-rose-950 text-rose-400 border border-rose-800";
-        if (estado === "EN PROCESO") badgeColor = "bg-amber-950 text-amber-400 border border-amber-800";
-
-        return `
-          <tr class="hover:bg-slate-800/50 transition">
-            <td class="p-3 font-semibold text-sky-400">${proceso}</td>
-            <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${estado}</span></td>
-            <td class="p-3 text-right font-mono">${parseInt(registros).toLocaleString()}</td>
-            <td class="p-3 text-slate-400">${fecha}</td>
-          </tr>
+        tr.innerHTML = `
+          <td><strong>${item.identificadorETL || '-'}</strong></td>
+          <td><span class="badge ${estadoClass}">${item.ultimoEstado || 'DESCONOCIDO'}</span></td>
+          <td>${item.ultimaEjecucion ? item.ultimaEjecucion.replace('T', ' ') : '-'}</td>
+          <td>${item.ultimaDuracionSeg !== null ? item.ultimaDuracionSeg : '-'}</td>
+          <td>${item.totalCorridas24h || 0}</td>
+          <td>${item.tiempoPromedioSeg !== null ? item.tiempoPromedioSeg : '-'}</td>
         `;
-      }).join('');
+        tbody.appendChild(tr);
+      });
     }
 
-    async function insertarRegistro(e) {
-      e.preventDefault();
-      const proceso = document.getElementById("proceso").value;
-      const estado = document.getElementById("estado").value;
-      const registrosProcesados = parseInt(document.getElementById("registrosProcesados").value);
+    function actualizarMetricas(data) {
+      document.getElementById('stat-total').textContent = data.length;
+      
+      const exitosas = data.filter(d => d.ultimoEstado === 'EXITOSO').length;
+      const errores = data.filter(d => d.ultimoEstado === 'ERROR').length;
+      const enProceso = data.filter(d => d.ultimoEstado === 'EN_PROCESO').length;
 
-      mostrarEstado("Guardando registro en SQL Server...", false);
-
-      try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ proceso, estado, registrosProcesados })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || `Error HTTP ${res.status}`);
-
-        mostrarEstado("✅ Registro insertado exitosamente", false);
-        document.getElementById("etlForm").reset();
-        cargarDatos();
-      } catch (err) {
-        mostrarEstado(`❌ Error al insertar: ${err.message}`, true);
-      }
+      document.getElementById('stat-exitosas').textContent = exitosas;
+      document.getElementById('stat-errores').textContent = errores;
+      document.getElementById('stat-proceso').textContent = enProceso;
     }
 
-    // Cargar automáticamente al entrar
-    cargarDatos();
+    // Cargar los datos automáticamente al abrir la página
+    cargarMonitoreo();
   </script>
 </body>
 </html>
